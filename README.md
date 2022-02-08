@@ -1,2 +1,1 @@
-# sp-jjn855
-EE382V - Systems Programming
+gcc -o yash yash.c prompt.h -lreadline
