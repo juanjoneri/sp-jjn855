@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 char* prompt() {
-    char *line;
+    char* line;
     long unused = 0;
 
     printf("# ");
