@@ -29,16 +29,18 @@ void freeCommand(struct command* c) {
   free(c);
 }
 
-void setProgram(struct command* c, char* program) {
-  c->program = copyString(program);
-}
-
 void addArgument(struct command* c, char* argument) {
   c->arguments[c->argument_count] = copyString(argument);
   c->argument_count++;
 }
 
+void setProgram(struct command* c, char* program) {
+  c->program = copyString(program);
+  addArgument(c, program);
+}
+
 void addArguments(struct command* c, char* arguments) {
+  // TODO: Text within quotes should be a single argument
   char* pch = strtok(arguments," ");
   while (pch != NULL) {
     addArgument(c, pch);
@@ -47,7 +49,7 @@ void addArguments(struct command* c, char* arguments) {
 }
 
 struct command* parseCommand(char* source) {    
-    char* command_pat = "(\\w+)([-a-z0-9 ]*)";
+    char* command_pat = "(\\w+)([-A-Za-z0-9 ]*)";
     size_t max_groups = 3;
 
     regex_t regex;
