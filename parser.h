@@ -10,20 +10,23 @@ char* copyString(char* str) {
 }
 
 struct command {
+  char* source; // Value as entered by end user
   char* program;
   char* arguments[50];
   int argument_count;
   int background;
 };
 
-struct command* allocCommand() {
+struct command* allocCommand(char* source) {
   struct command* c = malloc(sizeof(struct command));
+  c->source = copyString(source);
   c->argument_count = 0;
   c->background = 0;
   return c;
 }
 
 void freeCommand(struct command* c) {
+  free(c->source);
   free(c->program);
   for (int i = 0; i < c->argument_count; i++) {
     free(c->arguments[i]);
@@ -33,7 +36,8 @@ void freeCommand(struct command* c) {
 
 void printCommand(struct command* c) {
   printf(
-    "Command{\n\tprogram: %s\n\targuments: %d\n\tbackground: %d\n}\n", 
+    "Command{\n\tsource: %s\n\tprogram: %s\n\targuments: %d\n\tbackground: %d\n}\n",
+    c->source,
     c->program, 
     c->argument_count, 
     c->background);
@@ -71,7 +75,7 @@ struct command* parseCommand(char* source) {
 
     regcomp(&regex, command_pat, REG_EXTENDED);
 
-    struct command* c = allocCommand();
+    struct command* c = allocCommand(source);
 
     if (regexec(&regex, source, max_groups, groups, 0) == 0) {
       for (int g = 0; g < max_groups; g++){
