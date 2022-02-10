@@ -1,12 +1,15 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "prompt.h"
+#include "parser.h"
 
 int main() {
     char *line;
+    struct command* c;
+     
     while(line = prompt()) {
-        printf("You entered %s", line);
+        c = parseCommand(line);
+        printf("You entered %s", c->program);
     }
+    freeCommand(c);
     free(line);
     return 0;
 }

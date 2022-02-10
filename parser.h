@@ -81,13 +81,3 @@ struct command* parseCommand(char* source) {
     return c;
 
 }
-
-int main() {
-  struct command* c = parseCommand("hello   22  is  l0ve  -here");
-  printf("program: '%s'\n", c->program);
-  printf("argv1: '%s'\n", c->arguments[0]);
-  printf("argv2: '%s'\n", c->arguments[1]);
-  printf("argv3: '%s'\n", c->arguments[2]);
-  freeCommand(c);
-  return 0;
-}
