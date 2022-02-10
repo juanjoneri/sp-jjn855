@@ -13,11 +13,13 @@ struct command {
   char* program;
   char* arguments[50];
   int argument_count;
+  int background;
 };
 
 struct command* allocCommand() {
   struct command* c = malloc(sizeof(struct command));
   c->argument_count = 0;
+  c->background = 0;
   return c;
 }
 
@@ -27,6 +29,14 @@ void freeCommand(struct command* c) {
     free(c->arguments[i]);
   }
   free(c);
+}
+
+void printCommand(struct command* c) {
+  printf(
+    "Command{\n\tprogram: %s\n\targuments: %d\n\tbackground: %d\n}\n", 
+    c->program, 
+    c->argument_count, 
+    c->background);
 }
 
 void addArgument(struct command* c, char* argument) {
@@ -39,6 +49,10 @@ void setProgram(struct command* c, char* program) {
   addArgument(c, program);
 }
 
+void setBackground(struct command* c) {
+  c->background = 1;
+}
+
 void addArguments(struct command* c, char* arguments) {
   // TODO: Text within quotes should be a single argument
   char* pch = strtok(arguments," ");
@@ -49,8 +63,8 @@ void addArguments(struct command* c, char* arguments) {
 }
 
 struct command* parseCommand(char* source) {    
-    char* command_pat = "(\\w+)([-A-Za-z0-9 ]*)";
-    size_t max_groups = 3;
+    char* command_pat = "(\\w+)([-A-Za-z0-9 ]*)(\\s?&)?";
+    size_t max_groups = 4;
 
     regex_t regex;
     regmatch_t groups[max_groups];
@@ -73,8 +87,10 @@ struct command* parseCommand(char* source) {
           char* value = group + groups[g].rm_so;
           if (g == 1) {
             setProgram(c, value);
-          } else {
+          } else if (g == 2) {
             addArguments(c, value);
+          } else {
+            setBackground(c);
           }
         }
     }

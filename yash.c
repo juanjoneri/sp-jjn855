@@ -3,21 +3,25 @@
 #include "prompt.h"
 #include "parser.h"
 
+void executeAndWait(struct command* c) {
+    printCommand(c);
+    int cpid = fork();
+    if (cpid == 0){
+        execvp(c->program, c->arguments);
+    }else{
+        wait((int *)NULL);
+    }
+}
+
 int main() {
-    int cpid;
     char *line;
     struct command* c;
      
     while(line = prompt()) {
         c = parseCommand(line);
-        printf("Executing %s with %d arguments\n\n", c->program, c->argument_count);
-        cpid = fork();
-        if (cpid == 0){
-            execvp(c->program, c->arguments);
-        }else{
-            wait((int *)NULL);
-        }
+        executeAndWait(c);        
     }
+    
     freeCommand(c);
     free(line);
     return 0;
