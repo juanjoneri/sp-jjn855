@@ -90,9 +90,13 @@ char* extractGroup(char* source, regmatch_t group) {
     return copyString(value);
 }
 
+int startsWith(char *str, char *c) {
+    return strncmp(c, str, strlen(c)) == 0;
+}
+
 struct command* parseCommand(char* source) {
-    char* command_pat = "(\\w+)([-A-Za-z0-9 ]*)(\\s?&)?";
-    size_t max_groups = 4;
+    char* command_pat = "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>&]+)?\\s*([<>]\\s*[^|<>&]+)?\\s?(&)?";
+    size_t max_groups = 6;
 
     regex_t regex;
     regmatch_t groups[max_groups];
@@ -111,12 +115,17 @@ struct command* parseCommand(char* source) {
             }
 
             char* value = extractGroup(source, groups[g]);
+            printf("processing '%s'\n", value);
             if (g == 1) {
                 setProgram(c, value);
-            } else if (g == 2) {
-                addArguments(c, value);
-            } else {
+            } else if (startsWith(value, "&")) {
                 setBackground(c);
+            } else if (startsWith(value, ">")) {
+                printf("output redirection\n");
+            } else if (startsWith(value, "<")) {
+                printf("input redirection\n");
+            } else {
+                addArguments(c, value);
             }
         }
     }
