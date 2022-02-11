@@ -15,6 +15,9 @@ struct command {
   char* arguments[50];
   int argument_count;
   int background;
+  char* outfile;
+  char* infile;
+  struct command* pipe;
 };
 
 struct command* allocCommand(char* source) {
@@ -31,16 +34,31 @@ void freeCommand(struct command* c) {
   for (int i = 0; i < c->argument_count; i++) {
     free(c->arguments[i]);
   }
+  if(c->pipe != NULL) {
+    freeCommand(c->pipe);
+  }
   free(c);
 }
 
 void printCommand(struct command* c) {
-  printf(
-    "Command{\n\tsource: %s\n\tprogram: %s\n\targuments: %d\n\tbackground: %d\n}\n",
-    c->source,
-    c->program, 
-    c->argument_count, 
-    c->background);
+  for (int i = 0; i < c->argument_count; i++) {
+    printf("%s ", c->arguments[i]);
+  }
+  if (c->pipe != NULL) {
+    printf("| ");
+    printCommand(c->pipe);
+  }
+  // input redirection
+  // output redirection
+  if (c->background) {
+    // TODO: skip & when priting from fg
+    printf("&");
+  }
+  printf("\n");
+}
+
+void addPipe(struct command* left, struct command* right) {
+  left->pipe = right;
 }
 
 void addArgument(struct command* c, char* argument) {
@@ -66,6 +84,14 @@ void addArguments(struct command* c, char* arguments) {
   }
 }
 
+char* extractGroup(char* source, regmatch_t group) {
+    char temp[strlen(source) + 1];
+    strcpy(temp, source);
+    temp[group.rm_eo] = 0;
+    char* value = temp + group.rm_so;
+    return copyString(value);
+}
+
 struct command* parseCommand(char* source) {    
     char* command_pat = "(\\w+)([-A-Za-z0-9 ]*)(\\s?&)?";
     size_t max_groups = 4;
@@ -85,10 +111,8 @@ struct command* parseCommand(char* source) {
           if (g == 0) {
             continue; // skip full match
           }
-          char group[strlen(source) + 1];
-          strcpy(group, source);
-          group[groups[g].rm_eo] = 0;
-          char* value = group + groups[g].rm_so;
+
+          char* value = extractGroup(source, groups[g]);
           if (g == 1) {
             setProgram(c, value);
           } else if (g == 2) {
@@ -102,4 +126,42 @@ struct command* parseCommand(char* source) {
     regfree(&regex);
     return c;
 
+}
+
+struct command* parsePipe(char* source) {
+    char* pipe_pat = "([^|]+)\\s*\\|\\s*([^|]+)";
+    size_t max_groups = 3;
+
+    regex_t regex;
+    regmatch_t groups[max_groups];
+
+    regcomp(&regex, pipe_pat, REG_EXTENDED);
+
+    struct command* c;
+
+    if (regexec(&regex, source, max_groups, groups, 0) == 0) {
+      for (int g = 0; g < max_groups; g++){
+          if (groups[g].rm_so == -1) {
+            break;  // No more groups
+          }
+          if (g == 0) {
+            continue; // skip full match
+          }
+          
+          char* value = extractGroup(source, groups[g]);
+          if (g == 1) {
+            // left side of tye pipe
+            c = parseCommand(value);
+          } else {
+            // right side of the pipe
+            addPipe(c, parseCommand(value));
+          }
+        }
+
+    } else {
+      // input did not match regex therefore we have no pipe
+      c = parseCommand(source);
+    }
+    regfree(&regex);
+    return c;
 }
