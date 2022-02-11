@@ -4,18 +4,18 @@
 #include <string.h>
 
 char* copyString(char* str) {
-    char *copy = malloc(strlen(str) + 1);
+    char* copy = malloc(strlen(str) + 1);
     strcpy(copy, str);
     return copy;
 }
 
-enum JobState {STOPPED, RUNNING};
+enum JobState { STOPPED, RUNNING };
 
 struct job {
     char* source;
-    enum JobState state; // 0 stopped, 1 running
+    enum JobState state;  // 0 stopped, 1 running
     int id;
-    int pgid; // process group id
+    int pgid;  // process group id
     struct job* next;
 };
 
@@ -66,7 +66,6 @@ void printJobChain(struct job* root) {
 }
 
 int main() {
-
     struct job* a = allocJob();
     struct job* b = allocJob();
     struct job* c = allocJob();
