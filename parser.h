@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,6 +83,13 @@ void addArguments(struct command* c, char* arguments) {
     }
 }
 
+char* removeLeadingWhitespace(char* str) {
+    while (str[0] == 32) {
+        str++;
+    }
+    return copyString(str);
+}
+
 char* extractGroup(char* source, regmatch_t group) {
     char temp[strlen(source) + 1];
     strcpy(temp, source);
@@ -90,12 +98,12 @@ char* extractGroup(char* source, regmatch_t group) {
     return copyString(value);
 }
 
-int startsWith(char *str, char *c) {
-    return strncmp(c, str, strlen(c)) == 0;
-}
+int startsWith(char* str, char* c) { return strncmp(c, str, strlen(c)) == 0; }
 
 struct command* parseCommand(char* source) {
-    char* command_pat = "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>&]+)?\\s*([<>]\\s*[^|<>&]+)?\\s?(&)?";
+    char* command_pat =
+        "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*([<>]\\s*[^|<>& "
+        "]+)?\\s?(&)?";
     size_t max_groups = 6;
 
     regex_t regex;
@@ -121,9 +129,11 @@ struct command* parseCommand(char* source) {
             } else if (startsWith(value, "&")) {
                 setBackground(c);
             } else if (startsWith(value, ">")) {
-                printf("output redirection\n");
+                value = removeLeadingWhitespace(++value);
+                printf("output redirection: '%s'\n", value);
             } else if (startsWith(value, "<")) {
-                printf("input redirection\n");
+                value = removeLeadingWhitespace(++value);
+                printf("input redirection: '%s'\n", value);
             } else {
                 addArguments(c, value);
             }
