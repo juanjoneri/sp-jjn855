@@ -1,17 +1,10 @@
 #include <ctype.h>
-#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-char* copyString(char* str) {
-    char* copy = malloc(strlen(str) + 1);
-    strcpy(copy, str);
-    return copy;
-}
+#include "utils.h"
 
 struct command {
-    char* source;  // Value as entered by end user
     char* program;
     char* arguments[50];
     int argument_count;
@@ -21,17 +14,25 @@ struct command {
     struct command* pipe;
 };
 
-struct command* allocCommand(char* source) {
+struct command* allocCommand() {
     struct command* c = malloc(sizeof(struct command));
-    c->source = copyString(source);
+    c->program = NULL;
     c->argument_count = 0;
     c->background = 0;
+    c->outfile = NULL;
+    c->infile = NULL;
+    c->pipe = NULL;
     return c;
 }
 
 void freeCommand(struct command* c) {
-    free(c->source);
     free(c->program);
+    if (c->outfile != NULL) {
+        free(c->outfile);
+    }
+    if (c->infile != NULL) {
+        free(c->infile);
+    }
     for (int i = 0; i < c->argument_count; i++) {
         free(c->arguments[i]);
     }
@@ -45,17 +46,22 @@ void printCommand(struct command* c) {
     for (int i = 0; i < c->argument_count; i++) {
         printf("%s ", c->arguments[i]);
     }
+    // input redirection
+    if (c->infile != NULL) {
+        printf("< %s ", c->infile);
+    }
+    // output redirection
+    if (c->outfile != NULL) {
+        printf("> %s ", c->outfile);
+    }
+    if (c->background) {
+        // TODO: skip & when priting from fg
+        printf("& ");
+    }
     if (c->pipe != NULL) {
         printf("| ");
         printCommand(c->pipe);
     }
-    // input redirection
-    // output redirection
-    if (c->background) {
-        // TODO: skip & when priting from fg
-        printf("&");
-    }
-    printf("\n");
 }
 
 void addPipe(struct command* left, struct command* right) {
@@ -74,6 +80,12 @@ void setProgram(struct command* c, char* program) {
 
 void setBackground(struct command* c) { c->background = 1; }
 
+void setInfile(struct command* c, char* file) { c->infile = copyString(file); }
+
+void setOutfile(struct command* c, char* file) {
+    c->outfile = copyString(file);
+}
+
 void addArguments(struct command* c, char* arguments) {
     // TODO: Text within quotes should be a single argument
     char* pch = strtok(arguments, " ");
@@ -83,24 +95,8 @@ void addArguments(struct command* c, char* arguments) {
     }
 }
 
-char* removeLeadingWhitespace(char* str) {
-    while (str[0] == 32) {
-        str++;
-    }
-    return copyString(str);
-}
-
-char* extractGroup(char* source, regmatch_t group) {
-    char temp[strlen(source) + 1];
-    strcpy(temp, source);
-    temp[group.rm_eo] = 0;
-    char* value = temp + group.rm_so;
-    return copyString(value);
-}
-
-int startsWith(char* str, char* c) { return strncmp(c, str, strlen(c)) == 0; }
-
 struct command* parseCommand(char* source) {
+    // program arg1 arg2 < infile.txt > outfile.txt &
     char* command_pat =
         "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*([<>]\\s*[^|<>& "
         "]+)?\\s?(&)?";
@@ -111,7 +107,7 @@ struct command* parseCommand(char* source) {
 
     regcomp(&regex, command_pat, REG_EXTENDED);
 
-    struct command* c = allocCommand(source);
+    struct command* c = allocCommand();
 
     if (regexec(&regex, source, max_groups, groups, 0) == 0) {
         for (int g = 0; g < max_groups; g++) {
@@ -123,17 +119,16 @@ struct command* parseCommand(char* source) {
             }
 
             char* value = extractGroup(source, groups[g]);
-            printf("processing '%s'\n", value);
             if (g == 1) {
                 setProgram(c, value);
             } else if (startsWith(value, "&")) {
                 setBackground(c);
             } else if (startsWith(value, ">")) {
                 value = removeLeadingWhitespace(++value);
-                printf("output redirection: '%s'\n", value);
+                setOutfile(c, value);
             } else if (startsWith(value, "<")) {
                 value = removeLeadingWhitespace(++value);
-                printf("input redirection: '%s'\n", value);
+                setInfile(c, value);
             } else {
                 addArguments(c, value);
             }

@@ -5,7 +5,7 @@ char* prompt() {
     char* line;
     long unused = 0;
 
-    printf("# ");
+    printf("#");
     getline(&line, &unused, stdin);
     return line;
 }

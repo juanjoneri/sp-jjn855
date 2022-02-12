@@ -1,10 +1,16 @@
 #include "parser.h"
+#include "prompt.h"
 
 int main() {
-    char* source = "debajo < in.txt >    out.txt &";
+    char* line;
     struct command* c;
-    c = parsePipe(source);
-    printCommand(c);
-    freeCommand(c);
+
+    while (line = prompt()) {
+        c = parsePipe(line);
+        printCommand(c);
+        freeCommand(c); 
+    }
+
+    free(line);
     return 0;
-}   
+}

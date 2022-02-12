@@ -3,11 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-char* copyString(char* str) {
-    char* copy = malloc(strlen(str) + 1);
-    strcpy(copy, str);
-    return copy;
-}
+#include "utils.h"
 
 enum JobState { STOPPED, RUNNING };
 
