@@ -43,23 +43,24 @@ void freeCommand(struct command* c) {
 }
 
 void printCommand(struct command* c) {
-    for (int i = 0; i < c->argument_count; i++) {
-        printf("%s ", c->arguments[i]);
+    printf("%s" ,c->program);
+    for (int i = 1; i < c->argument_count; i++) {
+        printf(" %s", c->arguments[i]);
     }
     // input redirection
     if (c->infile != NULL) {
-        printf("< %s ", c->infile);
+        printf(" < %s", c->infile);
     }
     // output redirection
     if (c->outfile != NULL) {
-        printf("> %s ", c->outfile);
+        printf(" > %s", c->outfile);
     }
     if (c->background) {
         // TODO: skip & when priting from fg
-        printf("& ");
+        printf(" &\n");
     }
     if (c->pipe != NULL) {
-        printf("| ");
+        printf(" | ");
         printCommand(c->pipe);
     }
 }
@@ -99,7 +100,7 @@ struct command* parseCommand(char* source) {
     // program arg1 arg2 < infile.txt > outfile.txt &
     char* command_pat =
         "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*([<>]\\s*[^|<>& "
-        "]+)?\\s?(&)?";
+        "]+)?\\s*(&)?\\s*";
     size_t max_groups = 6;
 
     regex_t regex;
@@ -111,13 +112,9 @@ struct command* parseCommand(char* source) {
 
     if (regexec(&regex, source, max_groups, groups, 0) == 0) {
         for (int g = 0; g < max_groups; g++) {
-            if (groups[g].rm_so == -1) {
-                break;  // No more groups
+            if (g == 0 || groups[g].rm_so == -1) {
+                continue;  // Skip full match and empty groups
             }
-            if (g == 0) {
-                continue;  // skip full match
-            }
-
             char* value = extractGroup(source, groups[g]);
             if (g == 1) {
                 setProgram(c, value);
@@ -140,7 +137,7 @@ struct command* parseCommand(char* source) {
 }
 
 struct command* parsePipe(char* source) {
-    char* pipe_pat = "([^|]+)\\s*\\|\\s*([^|]+)";
+    char* pipe_pat = "([^|]+)\\|([^|]+)";
     size_t max_groups = 3;
 
     regex_t regex;
@@ -152,11 +149,8 @@ struct command* parsePipe(char* source) {
 
     if (regexec(&regex, source, max_groups, groups, 0) == 0) {
         for (int g = 0; g < max_groups; g++) {
-            if (groups[g].rm_so == -1) {
-                break;  // No more groups
-            }
-            if (g == 0) {
-                continue;  // skip full match
+            if (g == 0 || groups[g].rm_so == -1) {
+                continue;  // Skip full match and empty groups
             }
 
             char* value = extractGroup(source, groups[g]);
