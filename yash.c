@@ -8,67 +8,82 @@
 
 
 void closeFileDescriptor(int file_descriptor) {
-    if (file_descriptor != 0) {
+    if (file_descriptor != -1) {
         close(file_descriptor);
     }
 }
 
-void doExecute(struct command* c, int input, int output, int to_close[]) {
+void doExecute(struct command* c, int input, int output, int to_close) {
     int child_pid = fork();
     if (child_pid == 0) {
-        closeFileDescriptor(to_close[0]);
-        closeFileDescriptor(to_close[1]);
-        if (input != 0) {
+        closeFileDescriptor(to_close);
+        if (input != -1) {
             dup2(input, STDIN_FILENO);  // Override stdin with infile
         }
-        if (output != 0) {
+        if (output != -1) {
             dup2(output, STDOUT_FILENO);  // Override stdout with outfile
         }
         execvp(c->program, c->arguments);
     }
 }
 
-
-void executeChild(struct command* c, int parent_output, int unused_pipe) {
-    int input = parent_output, output, pipe_left, pipe_right;
-
+int getInputFileDescriptor(struct command* c) {
     if (hasInputRedirection(c)) {
-        // Input redirection overrides pipe
-        input = creat(c->infile, 0644);
+        return open(c->infile, O_RDONLY);
     }
-    if (hasPipe(c)) {
-        int pipe_file_descriptor[2];
-        pipe(pipe_file_descriptor);
-        pipe_left = pipe_file_descriptor[1];
-        pipe_right = pipe_file_descriptor[0];
-        output = pipe_left;
-    }
+    return -1;
+}
+
+int getOutputFileDescriptor(struct command* c) {
     if (hasOutputRedirection(c)) {
-        // Output redirection overrides pipe
-        output = creat(c->outfile, 0644);
+        return creat(c->outfile, 0644);
     }
+    return -1;
 
-    int to_close[2] = {unused_pipe, pipe_right};
-    doExecute(c, input, output, to_close);
-    if (hasPipe(c)) {
-        executeChild(c->pipe, pipe_right, /* unused_pipe */ pipe_left);
-    }
-    closeFileDescriptor(input);
-    closeFileDescriptor(output);
-    closeFileDescriptor(pipe_left);
-    closeFileDescriptor(pipe_right);
-
-    int unused_status;
-    if (parent_output == 0) {
-        waitpid(-1, &unused_status, 0);
-    }
-    if (hasPipe(c)) {
-        waitpid(-1, &unused_status, 0);
-    }
 }
 
 void execute(struct command* c) {
-    return executeChild(c, 0, 0);
+    int input = getInputFileDescriptor(c);
+    int output = getOutputFileDescriptor(c);
+
+    if (hasPipe(c)) {
+        int pipe_left, pipe_right, pipe_file_descriptor[2];
+        pipe(pipe_file_descriptor);
+        pipe_left = pipe_file_descriptor[1];
+        pipe_right = pipe_file_descriptor[0];
+        
+        if (output == -1) {
+            // Only use pipe for output when no explicit output redirection
+            output = pipe_left;
+        } else {
+            // Otherwise close it because it won't be used
+            closeFileDescriptor(pipe_left);
+        }
+        
+        int child_input = getInputFileDescriptor(c->pipe);
+        int child_output = getOutputFileDescriptor(c->pipe);
+
+        if (child_input == -1) {
+            // Only use pipe for input when no explicit input redirection
+            child_input = pipe_right;
+        } else {
+            // Otherwise close it because it won't be used
+            closeFileDescriptor(pipe_right);
+        }
+
+        doExecute(c, input, output, pipe_right);
+        doExecute(c->pipe, child_input, child_output, pipe_left);
+
+        closeFileDescriptor(pipe_left);
+        closeFileDescriptor(pipe_right);
+
+        waitpid(-1, NULL, 0);
+        waitpid(-1, NULL, 0);
+
+    } else {
+        doExecute(c, input, output, -1);
+        waitpid(-1, NULL, 0);
+    }
 }
 
 int main() {
