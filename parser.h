@@ -42,24 +42,30 @@ void freeCommand(struct command* c) {
     free(c);
 }
 
+int hasOutputRedirection(struct command* c) { return c->outfile != NULL; }
+
+int hasInputRedirection(struct command* c) { return c->infile != NULL; }
+
+int isBackgroundJob(struct command* c) { return c->background; }
+
+int hasPipe(struct command* c) { return c->pipe != NULL; }
+
 void printCommand(struct command* c) {
     printf("%s" ,c->program);
     for (int i = 1; i < c->argument_count; i++) {
         printf(" %s", c->arguments[i]);
     }
-    // input redirection
-    if (c->infile != NULL) {
+    if (hasInputRedirection(c)) {
         printf(" < %s", c->infile);
     }
-    // output redirection
-    if (c->outfile != NULL) {
-        printf(" > %s", c->outfile);
+    if (hasOutputRedirection(c)) {
+        printf(" > '%s'", c->outfile);
     }
-    if (c->background) {
+    if (isBackgroundJob(c)) {
         // TODO: skip & when priting from fg
         printf(" &\n");
     }
-    if (c->pipe != NULL) {
+    if (hasPipe(c)) {
         printf(" | ");
         printCommand(c->pipe);
     }
@@ -106,7 +112,7 @@ struct command* parseCommand(char* source) {
     regex_t regex;
     regmatch_t groups[max_groups];
 
-    regcomp(&regex, command_pat, REG_EXTENDED);
+    regcomp(&regex, command_pat, REG_EXTENDED | REG_NEWLINE);
 
     struct command* c = allocCommand();
 
@@ -121,11 +127,9 @@ struct command* parseCommand(char* source) {
             } else if (startsWith(value, "&")) {
                 setBackground(c);
             } else if (startsWith(value, ">")) {
-                value = removeLeadingWhitespace(++value);
-                setOutfile(c, value);
+                setOutfile(c, removeLeadingWhitespace(++value));
             } else if (startsWith(value, "<")) {
-                value = removeLeadingWhitespace(++value);
-                setInfile(c, value);
+                setInfile(c, removeLeadingWhitespace(++value));
             } else {
                 addArguments(c, value);
             }

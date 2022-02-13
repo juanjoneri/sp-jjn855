@@ -18,9 +18,7 @@ char* removeLeadingWhitespace(char* str) {
 int startsWith(char* str, char* c) { return strncmp(c, str, strlen(c)) == 0; }
 
 char* extractGroup(char* source, regmatch_t group) {
-    char temp[strlen(source) + 1];
-    strcpy(temp, source);
-    temp[group.rm_eo] = 0;
-    char* value = temp + group.rm_so;
-    return copyString(value);
+    char *result = malloc(group.rm_eo - group.rm_so + 1);
+    strncpy(result, &source[group.rm_so], group.rm_eo - group.rm_so);
+    return result;
 }

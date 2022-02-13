@@ -1,22 +1,31 @@
+#include <sys/stat.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "parser.h"
 #include "prompt.h"
 
-void executeAndWait(struct command* c) {
-    printCommand(c);
+void execute(struct command* c) {
+    int output_file_descriptor;
+    int input_file_descriptor;
+
     int cpid = fork();
     if (cpid == 0) {
-        setpgid(0, 0);  // create a new group for the child
+        if (hasOutputRedirection(c)) {
+            output_file_descriptor = creat(c->outfile, 0644);
+            dup2(output_file_descriptor, 1);  // Override stdout with outfile
+        }
+        if (hasInputRedirection(c)) {
+            input_file_descriptor = creat(c->infile, 0644);
+            dup2(output_file_descriptor, 0);  // Override stdin with infile
+        }
         execvp(c->program, c->arguments);
-    } else if (!c->background) {
-        // If the child ran in the foreground, we wait for its completion
+    } else if (isBackgroundJob(c)) {
+        printf("%s", "Child running in background");
+    } else {
         wait((int*)NULL);
         // TODO: handle signals (lecture 29 hr 2)
-    } else {
-        // If the child ran in the background, save it to the jobs list
-        printf("%s", "Child running in background");
     }
 }
 
@@ -26,10 +35,10 @@ int main() {
 
     while (line = prompt()) {
         c = parseCommand(line);
-        executeAndWait(c);
+        execute(c);
+        free(line);
+        freeCommand(c);
     }
 
-    freeCommand(c);
-    free(line);
     return 0;
 }
