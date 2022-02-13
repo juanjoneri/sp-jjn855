@@ -59,7 +59,7 @@ void printCommand(struct command* c) {
         printf(" < %s", c->infile);
     }
     if (hasOutputRedirection(c)) {
-        printf(" > '%s'", c->outfile);
+        printf(" > %s", c->outfile);
     }
     if (isBackgroundJob(c)) {
         // TODO: skip & when priting from fg
