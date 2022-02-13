@@ -63,7 +63,7 @@ void printCommand(struct command* c) {
     }
     if (isBackgroundJob(c)) {
         // TODO: skip & when priting from fg
-        printf(" &\n");
+        printf(" &");
     }
     if (hasPipe(c)) {
         printf(" | ");
