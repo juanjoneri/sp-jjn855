@@ -13,7 +13,7 @@ void closeFileDescriptor(int file_descriptor) {
     }
 }
 
-int doExecute(struct command* c, int input, int output, int to_close) {
+int doExecute(struct command* c, int input, int output, int to_close, int pgid) {
     int child_pid = fork();
     if (child_pid == 0) {
         closeFileDescriptor(to_close);
@@ -22,6 +22,13 @@ int doExecute(struct command* c, int input, int output, int to_close) {
         }
         if (output != -1) {
             dup2(output, STDOUT_FILENO);  // Override stdout with outfile
+        }
+        if (pgid != -1) {
+            // Create a new group with my pgid=pid
+            setpgid(0, 0);
+        } else {
+            // Join an existing group with pgid
+            setpgid(0, pgid);
         }
         execvp(c->program, c->arguments);
     }
@@ -45,6 +52,7 @@ int getOutputFileDescriptor(struct command* c) {
 
 void execute(struct command* c) {
     if (c->program == NULL) {
+        printf("no program\n");
         return;
     }
 
@@ -72,22 +80,31 @@ void execute(struct command* c) {
 
         int left_child_pid, right_child_pid; 
         
-        left_child_pid = doExecute(c, input, output, pipe_right);
+        left_child_pid = doExecute(c, input, output, pipe_right, -1);
         if (left_child_pid != 0) {
             // Only execute right child from parent
-            right_child_pid = doExecute(c->pipe, child_input, child_output, pipe_left);
+            right_child_pid = doExecute(c->pipe, child_input, child_output, pipe_left, left_child_pid);
         }
 
-        closeFileDescriptor(pipe_left);
-        closeFileDescriptor(pipe_right);
+        if ((left_child_pid != 0) && (right_child_pid != 0)) {
+            // Parent
+            tcsetpgrp(0, left_child_pid); // Give terminal control to the group
 
-        waitpid(left_child_pid, NULL, 0);
-        waitpid(right_child_pid, NULL, 0);
+            closeFileDescriptor(pipe_right);
+            closeFileDescriptor(pipe_left);
+            
+            waitpid(left_child_pid, NULL, WUNTRACED);
+            waitpid(right_child_pid, NULL, WUNTRACED);
 
+            tcsetpgrp(0, getpid()); // claim back the control
+        }
 
     } else {
-        int child_pid = doExecute(c, input, output, -1);
+        int child_pid = doExecute(c, input, output, -1, -1);
+        tcsetpgrp(0, child_pid); // Give terminal control to child
         waitpid(child_pid, NULL, 0);
+        signal(SIGTTOU, SIG_IGN);
+        tcsetpgrp(0, getpid()); // Claim terminal control
     }
 }
 
