@@ -51,7 +51,7 @@ int isBackgroundJob(struct command* c) { return c->background; }
 int hasPipe(struct command* c) { return c->pipe != NULL; }
 
 void printCommand(struct command* c) {
-    printf("%s" ,c->program);
+    printf("%s", c->program);
     for (int i = 1; i < c->argument_count; i++) {
         printf(" %s", c->arguments[i]);
     }
@@ -105,8 +105,7 @@ void addArguments(struct command* c, char* arguments) {
 struct command* parseCommand(char* source) {
     // program arg1 arg2 < infile.txt > outfile.txt &
     char* command_pat =
-        "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*([<>]\\s*[^|<>& "
-        "]+)?\\s*(&)?\\s*";
+        "(\\S+)([^|<>&]+)?\\s*([<>]\\s*\\S+)?\\s*([<>]\\s*\\S+)?\\s*(&)?\\s*";
     size_t max_groups = 6;
 
     regex_t regex;

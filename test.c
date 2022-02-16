@@ -6,11 +6,13 @@ int main() {
     struct command* c;
 
     while (line = prompt()) {
+        printf("'%s'\n", line);
         c = parsePipe(line);
         printCommand(c);
         freeCommand(c); 
+        // parseCommandTest(line);
+        free(line);
     }
 
-    free(line);
     return 0;
 }

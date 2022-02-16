@@ -13,6 +13,15 @@ void closeFileDescriptor(int file_descriptor) {
     }
 }
 
+void giveTerminalControl(int pgid){
+    tcsetpgrp(0, pgid);
+}
+
+void claimTerminalControl() {
+    signal(SIGTTOU, SIG_IGN);
+    tcsetpgrp(0, getpgid(getpid()));
+}
+
 int doExecute(struct command* c, int input, int output, int to_close, int pgid) {
     int child_pid = fork();
     if (child_pid == 0) {
@@ -44,9 +53,18 @@ int getOutputFileDescriptor(struct command* c) {
 
 }
 
+void waitForChild(int child_pid) {
+    int status, w;
+    do { 
+        w = waitpid(child_pid, &status, WUNTRACED);
+        if (w == -1) {
+            exit(EXIT_FAILURE);
+        }
+    } while(!WIFEXITED(status) && !WIFSIGNALED(status));
+}
+
 void execute(struct command* c) {
     if (c->program == NULL) {
-        printf("no program\n");
         return;
     }
 
@@ -72,48 +90,25 @@ void execute(struct command* c) {
             child_input = pipe_right;
         }
 
-        int left_child_pid, right_child_pid; 
-        
-        left_child_pid = doExecute(c, input, output, pipe_right, /*pgid*/ 0);
+        int left_child_pid = doExecute(c, input, output, pipe_right, /*pgid*/ 0);
         int pipe_pgid = left_child_pid;
-        if (left_child_pid != 0) {
-            // Only execute right child from parent
-            right_child_pid = doExecute(c->pipe, child_input, child_output, pipe_left, pipe_pgid);
-        }
+        int right_child_pid = doExecute(c->pipe, child_input, child_output, pipe_left, pipe_pgid);
 
-        if ((left_child_pid != 0) && (right_child_pid != 0)) {
-            // Parent
-            tcsetpgrp(0, pipe_pgid); // Give terminal control to the group
+        closeFileDescriptor(pipe_right);
+        closeFileDescriptor(pipe_left);
 
-            closeFileDescriptor(pipe_right);
-            closeFileDescriptor(pipe_left);
-            
-            int status;
-            do { 
-                waitpid(left_child_pid, &status, WUNTRACED);
-            } while(!WIFEXITED(status) && !WIFSIGNALED(status));
-            do { 
-                waitpid(right_child_pid, &status, WUNTRACED);
-            } while(!WIFEXITED(status) && !WIFSIGNALED(status));
-
-            signal(SIGTTOU, SIG_IGN);
-            tcsetpgrp(0, getpgid(getpid())); // Claim terminal control
-        }
+        giveTerminalControl(pipe_pgid);
+        
+        waitForChild(right_child_pid);
+        waitForChild(left_child_pid);
+        
+        claimTerminalControl();
 
     } else {
         int child_pid = doExecute(c, input, output, -1, 0);
-        if (child_pid != 0) {
-            tcsetpgrp(0, child_pid); // Give terminal control to child
-            int status, w;
-            do { 
-                w = waitpid(child_pid, &status, WUNTRACED);
-                if (w == -1) {
-                    exit(EXIT_FAILURE);
-                }
-            } while(!WIFEXITED(status) && !WIFSIGNALED(status));
-            signal(SIGTTOU, SIG_IGN);
-            tcsetpgrp(0, getpgid(getpid())); // Claim terminal control
-        }
+        giveTerminalControl(child_pid);
+        waitForChild(child_pid);
+        claimTerminalControl();
     }
 }
 
@@ -123,6 +118,7 @@ int main() {
 
     while (line = prompt()) {
         c = parsePipe(line);
+        // printCommand(c);
         execute(c);
         free(line);
         freeCommand(c);
