@@ -1,6 +1,8 @@
 #include <regex.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 char* copyString(char* str) {
     char* copy = malloc(strlen(str) + 1);
@@ -26,4 +28,33 @@ char* extractGroup(char* source, regmatch_t group) {
     }
     result[c] = '\0';
     return result;
+}
+
+int strEquals(char* str1, char* str2) {
+    if (strlen(str1) != strlen(str2)) {
+        return 0;
+    }
+    for (int i = 0; i < strlen(str1); i++) {
+        if (str1[i] != str2[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void printList(char* list[]) {
+    int i = 0;
+    while (1) {
+        if (list[i] == NULL) {
+            return;
+        }
+        printf("list[%d]='%s'", i, list[i]);
+        i++;
+    }
+}
+
+void clearArray(char* array[], int size) {
+    for (int i = 0; i < size; i++) {
+        array[i] = NULL;
+    }
 }

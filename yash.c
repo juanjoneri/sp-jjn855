@@ -1,11 +1,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 #include "parser.h"
 #include "prompt.h"
-
 
 void closeFileDescriptor(int file_descriptor) {
     if (file_descriptor != -1) {
@@ -13,18 +11,18 @@ void closeFileDescriptor(int file_descriptor) {
     }
 }
 
-void giveTerminalControl(int pgid){
-    tcsetpgrp(0, pgid);
-}
+void giveTerminalControl(int pgid) { tcsetpgrp(0, pgid); }
 
 void claimTerminalControl() {
     signal(SIGTTOU, SIG_IGN);
     tcsetpgrp(0, getpgid(getpid()));
 }
 
-int doExecute(struct command* c, int input, int output, int to_close, int pgid) {
+int doExecute(struct command* c, int input, int output, int to_close,
+              int pgid) {
     int child_pid = fork();
     if (child_pid == 0) {
+        setpgid(0, pgid);
         closeFileDescriptor(to_close);
         if (input != -1) {
             dup2(input, STDIN_FILENO);  // Override stdin with infile
@@ -32,7 +30,6 @@ int doExecute(struct command* c, int input, int output, int to_close, int pgid) 
         if (output != -1) {
             dup2(output, STDOUT_FILENO);  // Override stdout with outfile
         }
-        setpgid(0, pgid);
         execvp(c->program, c->arguments);
     }
     return child_pid;
@@ -50,17 +47,16 @@ int getOutputFileDescriptor(struct command* c) {
         return creat(c->outfile, 0644);
     }
     return -1;
-
 }
 
 void waitForChild(int child_pid) {
     int status, w;
-    do { 
-        w = waitpid(child_pid, &status, WUNTRACED);
+    do {
+        w = waitpid(child_pid, &status, WUNTRACED | WCONTINUED);
         if (w == -1) {
             exit(EXIT_FAILURE);
         }
-    } while(!WIFEXITED(status) && !WIFSIGNALED(status));
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
 }
 
 void execute(struct command* c) {
@@ -76,12 +72,12 @@ void execute(struct command* c) {
         pipe(pipe_file_descriptor);
         pipe_left = pipe_file_descriptor[1];
         pipe_right = pipe_file_descriptor[0];
-        
+
         if (output == -1) {
             // Only use pipe for output when no explicit output redirection
             output = pipe_left;
         }
-        
+
         int child_input = getInputFileDescriptor(c->pipe);
         int child_output = getOutputFileDescriptor(c->pipe);
 
@@ -90,18 +86,20 @@ void execute(struct command* c) {
             child_input = pipe_right;
         }
 
-        int left_child_pid = doExecute(c, input, output, pipe_right, /*pgid*/ 0);
+        int left_child_pid =
+            doExecute(c, input, output, pipe_right, /*pgid*/ 0);
         int pipe_pgid = left_child_pid;
-        int right_child_pid = doExecute(c->pipe, child_input, child_output, pipe_left, pipe_pgid);
+        int right_child_pid =
+            doExecute(c->pipe, child_input, child_output, pipe_left, pipe_pgid);
 
         closeFileDescriptor(pipe_right);
         closeFileDescriptor(pipe_left);
 
         giveTerminalControl(pipe_pgid);
-        
+
         waitForChild(right_child_pid);
         waitForChild(left_child_pid);
-        
+
         claimTerminalControl();
 
     } else {
@@ -114,15 +112,27 @@ void execute(struct command* c) {
 
 int main() {
     char* line;
-    struct command* c;
+    struct command* history[500];
+    int i = 0;
 
     while (line = prompt()) {
-        c = parsePipe(line);
-        // printCommand(c);
-        execute(c);
+        if (strEquals(line, "history")) {
+            for (int h = 0; h < i; h++) {
+                printf(" %d ", h);
+                printCommand(history[h]);
+                printf("\n");
+            }
+            continue;
+        }
+
+        history[i] = parsePipe(line);
+        execute(history[i]);
+        i++;
         free(line);
-        freeCommand(c);
     }
 
+    for (int h = 0; h < i; h++) {
+        freeCommand(history[h]);
+    }
     return 0;
 }

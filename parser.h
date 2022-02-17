@@ -17,6 +17,7 @@ struct command {
 struct command* allocCommand() {
     struct command* c = malloc(sizeof(struct command));
     c->program = NULL;
+    clearArray(c->arguments, 50);
     c->argument_count = 0;
     c->background = 0;
     c->outfile = NULL;
@@ -49,6 +50,27 @@ int hasInputRedirection(struct command* c) { return c->infile != NULL; }
 int isBackgroundJob(struct command* c) { return c->background; }
 
 int hasPipe(struct command* c) { return c->pipe != NULL; }
+
+void reprCommand(struct command* c) {
+    printf("program:'%s'\n", c->program);
+    for (int i = 1; i < c->argument_count; i++) {
+        printf(" arg:'%s'\n", c->arguments[i]);
+    }
+    if (hasInputRedirection(c)) {
+        printf(" in:'%s'\n", c->infile);
+    }
+    if (hasOutputRedirection(c)) {
+        printf(" out:'%s'\n", c->outfile);
+    }
+    if (isBackgroundJob(c)) {
+        // TODO: skip & when priting from fg
+        printf(" background\n");
+    }
+    if (hasPipe(c)) {
+        printf(" pipe\n");
+        reprCommand(c->pipe);
+    }
+}
 
 void printCommand(struct command* c) {
     printf("%s", c->program);
@@ -132,6 +154,7 @@ struct command* parseCommand(char* source) {
             } else {
                 addArguments(c, value);
             }
+            // free(value);
         }
     }
 
@@ -164,6 +187,7 @@ struct command* parsePipe(char* source) {
                 // right side of the pipe
                 addPipe(c, parseCommand(value));
             }
+            free(value);
         }
 
     } else {
