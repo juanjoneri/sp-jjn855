@@ -112,7 +112,8 @@ void execute(struct command* c) {
 
 int main() {
     char* line;
-    struct command* history[500];
+    int history_size = 50;
+    struct command* history[history_size];
     int i = 0;
 
     while (line = prompt()) {
@@ -124,11 +125,17 @@ int main() {
             }
             continue;
         }
+        if (i >= history_size) {
+            for (int h = 0; h < i; h++) {
+                freeCommand(history[h]);
+            }
+            i = -1;
+        }
 
         history[i] = parsePipe(line);
         execute(history[i]);
-        i++;
         free(line);
+        i++;
     }
 
     for (int h = 0; h < i; h++) {

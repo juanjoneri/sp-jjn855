@@ -51,27 +51,6 @@ int isBackgroundJob(struct command* c) { return c->background; }
 
 int hasPipe(struct command* c) { return c->pipe != NULL; }
 
-void reprCommand(struct command* c) {
-    printf("program:'%s'\n", c->program);
-    for (int i = 1; i < c->argument_count; i++) {
-        printf(" arg:'%s'\n", c->arguments[i]);
-    }
-    if (hasInputRedirection(c)) {
-        printf(" in:'%s'\n", c->infile);
-    }
-    if (hasOutputRedirection(c)) {
-        printf(" out:'%s'\n", c->outfile);
-    }
-    if (isBackgroundJob(c)) {
-        // TODO: skip & when priting from fg
-        printf(" background\n");
-    }
-    if (hasPipe(c)) {
-        printf(" pipe\n");
-        reprCommand(c->pipe);
-    }
-}
-
 void printCommand(struct command* c) {
     printf("%s", c->program);
     for (int i = 1; i < c->argument_count; i++) {
@@ -154,7 +133,6 @@ struct command* parseCommand(char* source) {
             } else {
                 addArguments(c, value);
             }
-            // free(value);
         }
     }
 
