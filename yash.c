@@ -49,7 +49,7 @@ int getOutputFileDescriptor(struct command* c) {
     return -1;
 }
 
-void waitForChild(int child_pid) {
+enum JobState waitForChild(int child_pid) {
     int status, w;
     do {
         w = waitpid(child_pid, &status, WUNTRACED | WCONTINUED);
@@ -59,20 +59,21 @@ void waitForChild(int child_pid) {
         if (WIFEXITED(status)) {
             printf("exited, status=%d\n", WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
-            printf("killed by signal %d\n", WTERMSIG(status));
+            return TERMINATED;
         } else if (WIFSTOPPED(status)) {
-            printf("stopped by signal %d\n", WSTOPSIG(status));
+            return STOPPED;
         } else if (WIFCONTINUED(status)) {
             printf("continued\n");
         }
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    return TERMINATED;
 }
 
 void fg(struct job* job) {
     giveTerminalControl(job->pgid);
-    waitForChild(job->pgid);
+    enum JobState state = waitForChild(job->pgid);
     claimTerminalControl();
-    job->state = TERMINATED;
+    job->state = state;
 }
 
 void printHistory(struct command* history[], int history_size) {
@@ -138,7 +139,7 @@ void execute(struct job* job) {
 
 int main() {
     char* line;
-    int history_size = 50;
+    int history_size = 100;
     struct command* history[history_size];
     struct job* job_chain = NULL;
     int i = 0;
@@ -163,7 +164,14 @@ int main() {
         }
         if (strEquals(line, "fg")) {
             struct job* last_job = getLastJob(job_chain);
+            printJob(last_job);
             fg(last_job);
+            continue;
+        }
+        if (strEquals(line, "bg")) {
+            struct job* last_stopped = getLastStoppedJob(job_chain);
+            printJob(last_stopped);
+            // fg(last_job);
             continue;
         }
 
@@ -182,3 +190,4 @@ int main() {
     }
     return 0;
 }
+

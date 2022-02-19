@@ -31,6 +31,25 @@ void freeJobChain(struct job* job_chain) {
     free(job_chain);
 }
 
+void printJob(struct job* j) {
+    printf("[%d]", j->id);
+    if (j->next != NULL) {
+        printf("-");
+    } else {
+        printf("+");
+    }
+    if (j->state == STOPPED) {
+        printf(" Stopped");
+    } else if (j->state == TERMINATED) {
+        printf(" Done");
+    } else {
+        printf(" Running");
+    }
+    printf("\t");
+    printCommand(j->command);
+    printf("\n");
+}
+
 void printJobChain(struct job* job_chain) {
     if (job_chain == NULL) {
         return;
@@ -38,22 +57,7 @@ void printJobChain(struct job* job_chain) {
 
     struct job* current = job_chain;
     while (current != NULL) {
-        printf("[%d]", current->id);
-        if (current->next != NULL) {
-            printf("-");
-        } else {
-            printf("+");
-        }
-        if (current->state == STOPPED) {
-            printf(" Stopped");
-        } else if (current->state == TERMINATED) {
-            printf(" Done");
-        } else {
-            printf(" Running");
-        }
-        printf("\t");
-        printCommand(current->command);
-        printf("\n");
+        printJob(current);
         current = current->next;
     }
 }
@@ -92,7 +96,19 @@ struct job* getLastJob(struct job* job_chain) {
     return current;
 }
 
-void remove_next(struct job* job_chain) {
+struct job* getLastStoppedJob(struct job* job_chain) {
+    struct job* current = job_chain;
+    struct job* last_stopped = current->state == STOPPED ? current : NULL;
+    while (current->next != NULL) {
+        current = current->next;
+        if (current->state == STOPPED) {
+            last_stopped = current;
+        }
+    }
+    return last_stopped;
+}
+
+void removeNext(struct job* job_chain) {
     if (job_chain->next == NULL) {
         return;
     }
@@ -105,7 +121,7 @@ struct job* removeTerminated(struct job* job_chain) {
     struct job* current = job_chain;
     while (current->next != NULL) {
         while (current->next != NULL && current->next->state == TERMINATED) {
-            remove_next(current);
+            removeNext(current);
         }
         if (current->next != NULL) {
             current = current->next;
