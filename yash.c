@@ -2,8 +2,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "prompt.h"
 #include "job.h"
+#include "prompt.h"
 
 void closeFileDescriptor(int file_descriptor) {
     if (file_descriptor != -1) {
@@ -56,7 +56,31 @@ void waitForChild(int child_pid) {
         if (w == -1) {
             exit(EXIT_FAILURE);
         }
+        if (WIFEXITED(status)) {
+            printf("exited, status=%d\n", WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            printf("killed by signal %d\n", WTERMSIG(status));
+        } else if (WIFSTOPPED(status)) {
+            printf("stopped by signal %d\n", WSTOPSIG(status));
+        } else if (WIFCONTINUED(status)) {
+            printf("continued\n");
+        }
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+}
+
+void fg(struct job* job) {
+    giveTerminalControl(job->pgid);
+    waitForChild(job->pgid);
+    claimTerminalControl();
+    job->state = TERMINATED;
+}
+
+void printHistory(struct command* history[], int history_size) {
+    for (int h = 0; h < history_size; h++) {
+        printf(" %d ", h);
+        printCommand(history[h]);
+        printf("\n");
+    }
 }
 
 void execute(struct job* job) {
@@ -105,10 +129,9 @@ void execute(struct job* job) {
 
     } else {
         int child_pid = doExecute(c, input, output, -1, 0);
+        job->pgid = child_pid;
         if (!c->background) {
-            giveTerminalControl(child_pid);
-            waitForChild(child_pid);
-            claimTerminalControl();
+            fg(job);
         }
     }
 }
@@ -116,18 +139,16 @@ void execute(struct job* job) {
 int main() {
     char* line;
     int history_size = 50;
-    int job_count = 100;
     struct command* history[history_size];
     struct job* job_chain = NULL;
     int i = 0;
 
     while (line = prompt()) {
+        if (job_chain != NULL) {
+            job_chain = removeTerminated(job_chain);
+        }
         if (strEquals(line, "history")) {
-            for (int h = 0; h < i; h++) {
-                printf(" %d ", h);
-                printCommand(history[h]);
-                printf("\n");
-            }
+            printHistory(history, i);
             continue;
         }
         if (i >= history_size) {
@@ -140,22 +161,19 @@ int main() {
             printJobChain(job_chain);
             continue;
         }
-        if (strEquals(line, "clean")) {
-            removeTerminated(job_chain);
+        if (strEquals(line, "fg")) {
+            struct job* last_job = getLastJob(job_chain);
+            fg(last_job);
             continue;
         }
 
-
         struct command* c = parsePipe(line);
-        if (job_chain == NULL) {
-            job_chain = allocJob(c, 1);
-        } else {
-            addToJobChain(job_chain, c);
-        }
-        // execute(getLastJob(job_chain));
+        job_chain = addToJobChain(job_chain, c);
+
+        execute(getLastJob(job_chain));
+
         free(line);
-        history[i] = c;
-        i++;
+        history[i++] = c;
     }
 
     freeJobChain(job_chain);

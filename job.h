@@ -18,7 +18,7 @@ struct job {
 struct job* allocJob(struct command* c, int next_id) {
     struct job* j = malloc(sizeof(struct job));
     j->command = c;
-    j->state = next_id % 3 == 0 ? TERMINATED : RUNNING ;
+    j->state = RUNNING;
     j->id = next_id;
     j->next = NULL;
     return j;
@@ -32,6 +32,10 @@ void freeJobChain(struct job* job_chain) {
 }
 
 void printJobChain(struct job* job_chain) {
+    if (job_chain == NULL) {
+        return;
+    }
+
     struct job* current = job_chain;
     while (current != NULL) {
         printf("[%d]", current->id);
@@ -42,8 +46,8 @@ void printJobChain(struct job* job_chain) {
         }
         if (current->state == STOPPED) {
             printf(" Stopped");
-        } else if (current->state == TERMINATED)  {
-            printf(" Terminated");
+        } else if (current->state == TERMINATED) {
+            printf(" Done");
         } else {
             printf(" Running");
         }
@@ -65,18 +69,23 @@ int getNextJobId(struct job* job_chain) {
     return current->id + 1;
 }
 
-void addToJobChain(struct job* job_chain, struct command* c) {
+struct job* addToJobChain(struct job* job_chain, struct command* c) {
+    if (job_chain == NULL) {
+        struct job* job = allocJob(c, 1);
+        return job;
+    }
     struct job* current = job_chain;
     struct job* next = allocJob(c, getNextJobId(job_chain));
-    
+
     while (current->next != NULL) {
         current = current->next;
     }
     current->next = next;
+    return job_chain;
 }
 
 struct job* getLastJob(struct job* job_chain) {
-    struct job* current = job_chain;    
+    struct job* current = job_chain;
     while (current->next != NULL) {
         current = current->next;
     }
@@ -94,18 +103,18 @@ void remove_next(struct job* job_chain) {
 
 struct job* removeTerminated(struct job* job_chain) {
     struct job* current = job_chain;
-    while(current->next != NULL) {
-        while(current->next != NULL && current->next->state  == TERMINATED) {
+    while (current->next != NULL) {
+        while (current->next != NULL && current->next->state == TERMINATED) {
             remove_next(current);
         }
         if (current->next != NULL) {
             current = current->next;
         }
     }
-    if (current->state == TERMINATED) {
+    if (job_chain->state == TERMINATED) {
         struct job* next = current->next;
-        free(current);
+        free(job_chain);
         return next;
     }
-    return current;
+    return job_chain;
 }
