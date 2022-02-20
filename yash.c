@@ -60,29 +60,37 @@ int getOutputFileDescriptor(struct command* c) {
 
 enum JobState waitForChild(int child_pid) {
     int status, w;
-    do {
-        w = waitpid(child_pid, &status, WUNTRACED | WCONTINUED);
+    while(1) {
+        w = waitpid(child_pid, &status, WUNTRACED);
         if (w == -1) {
+            // Terminated with a failure
             exit(EXIT_FAILURE);
         }
         if (WIFEXITED(status)) {
-            printf("exited, status=%d\n", WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-            printf("signaled, status=%d\n", WEXITSTATUS(status));
-        } else if (WIFSTOPPED(status)) {
-            return STOPPED;
-        } else if (WIFCONTINUED(status)) {
-            printf("continued\n");
+            // Terminated normally
+            return TERMINATED;
         }
-    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    return TERMINATED;
+        if (WIFSTOPPED(status)) {
+            // Terminated by signal SIGSTP (^z)
+            return STOPPED;
+        } 
+        if (WIFSIGNALED(status)) {
+            // Terminated by a signal SIGINT (^c)
+            return TERMINATED;
+        }
+    }
 }
 
 void fg(struct job* job) {
     giveTerminalControl(job->pgid);
+    kill(job->pgid, SIGCONT);
     enum JobState state = waitForChild(job->pgid);
     claimTerminalControl();
     job->state = state;
+}
+
+void bg(struct job* job) {
+    kill(job->pgid, SIGCONT);
 }
 
 void printHistory(struct command* history[], int history_size) {
@@ -153,7 +161,7 @@ void execute(struct job* job) {
 
 int main() {
     // Ignore ^Z in yash
-    signal(SIGTSTP, SIG_IGN);
+    // signal(SIGTSTP, SIG_IGN);
 
     char* line;
     int history_size = 100;
@@ -183,10 +191,8 @@ int main() {
         if (strEquals(line, "fg")) {
             struct job* last_job = getLastJob(job_chain);
             if (last_job != NULL) {
-                int was_background = last_job->command->background;
-                last_job->command->background = 0;
+                last_job->state = RUNNING;
                 printJob(last_job);
-                last_job->command->background = was_background;
                 fg(last_job);
             }
             continue;
@@ -194,8 +200,9 @@ int main() {
         if (strEquals(line, "bg")) {
             struct job* last_stopped = getLastStoppedJob(job_chain);
             if (last_stopped != NULL) {
+                last_stopped->state = RUNNING;
                 printJob(last_stopped);
-                // fg(last_job);
+                bg(last_stopped);
             }
             continue;
         }
