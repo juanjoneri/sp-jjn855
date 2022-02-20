@@ -11,10 +11,12 @@ void closeFileDescriptor(int file_descriptor) {
     }
 }
 
-void giveTerminalControl(int pgid) { tcsetpgrp(0, pgid); }
+void giveTerminalControl(int pgid) {
+    tcsetpgrp(0, pgid);
+}
 
 void claimTerminalControl() {
-    signal(SIGTTOU, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN); // Prevent IO from breaking the program
     tcsetpgrp(0, getpgid(getpid()));
 }
 
@@ -60,7 +62,7 @@ int getOutputFileDescriptor(struct command* c) {
 
 enum JobState waitForChild(int child_pid) {
     int status, w;
-    while(1) {
+    while (1) {
         w = waitpid(child_pid, &status, WUNTRACED);
         if (w == -1) {
             // Terminated with a failure
@@ -73,7 +75,7 @@ enum JobState waitForChild(int child_pid) {
         if (WIFSTOPPED(status)) {
             // Terminated by signal SIGSTP (^z)
             return STOPPED;
-        } 
+        }
         if (WIFSIGNALED(status)) {
             // Terminated by a signal SIGINT (^c)
             return TERMINATED;
@@ -89,9 +91,7 @@ void fg(struct job* job) {
     job->state = state;
 }
 
-void bg(struct job* job) {
-    kill(job->pgid, SIGCONT);
-}
+void bg(struct job* job) { kill(job->pgid, SIGCONT); }
 
 void printHistory(struct command* history[], int history_size) {
     for (int h = 0; h < history_size; h++) {
@@ -161,7 +161,7 @@ void execute(struct job* job) {
 
 int main() {
     // Ignore ^Z in yash
-    // signal(SIGTSTP, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
 
     char* line;
     int history_size = 100;
@@ -210,7 +210,9 @@ int main() {
         struct command* c = parsePipe(line);
         job_chain = addToJobChain(job_chain, c);
 
+        signal(SIGTSTP, SIG_DFL);  // Allow ^z while child owns the terminal
         execute(getLastJob(job_chain));
+        signal(SIGTSTP, SIG_IGN); // Ignore ^z when yash owns the terminal
 
         free(line);
         history[i++] = c;
@@ -222,4 +224,3 @@ int main() {
     }
     return 0;
 }
-
