@@ -35,6 +35,15 @@ int doExecute(struct command* c, int input, int output, int to_close,
     return child_pid;
 }
 
+int fileExists(char* file) {
+    int file_descriptor = open(file, O_RDONLY);
+    if (file_descriptor == -1) {
+        return 0;
+    }
+    closeFileDescriptor(file_descriptor);
+    return 1;
+}
+
 int getInputFileDescriptor(struct command* c) {
     if (hasInputRedirection(c)) {
         return open(c->infile, O_RDONLY);
@@ -59,7 +68,7 @@ enum JobState waitForChild(int child_pid) {
         if (WIFEXITED(status)) {
             printf("exited, status=%d\n", WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
-            return TERMINATED;
+            printf("signaled, status=%d\n", WEXITSTATUS(status));
         } else if (WIFSTOPPED(status)) {
             return STOPPED;
         } else if (WIFCONTINUED(status)) {
@@ -87,6 +96,11 @@ void printHistory(struct command* history[], int history_size) {
 void execute(struct job* job) {
     struct command* c = job->command;
     if (c->program == NULL) {
+        return;
+    }
+
+    if (hasInputRedirection(c) && !fileExists(c->infile)) {
+        printf("%s not such file or directory\n", c->infile);
         return;
     }
 
