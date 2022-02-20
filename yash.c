@@ -152,6 +152,9 @@ void execute(struct job* job) {
 }
 
 int main() {
+    // Ignore ^Z in yash
+    signal(SIGTSTP, SIG_IGN);
+
     char* line;
     int history_size = 100;
     struct command* history[history_size];
@@ -180,7 +183,10 @@ int main() {
         if (strEquals(line, "fg")) {
             struct job* last_job = getLastJob(job_chain);
             if (last_job != NULL) {
+                int was_background = last_job->command->background;
+                last_job->command->background = 0;
                 printJob(last_job);
+                last_job->command->background = was_background;
                 fg(last_job);
             }
             continue;
