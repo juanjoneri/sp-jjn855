@@ -89,6 +89,9 @@ struct job* addToJobChain(struct job* job_chain, struct command* c) {
 }
 
 struct job* getLastJob(struct job* job_chain) {
+    if (job_chain == NULL) {
+        return NULL;
+    }
     struct job* current = job_chain;
     while (current->next != NULL) {
         current = current->next;
@@ -97,6 +100,9 @@ struct job* getLastJob(struct job* job_chain) {
 }
 
 struct job* getLastStoppedJob(struct job* job_chain) {
+    if (job_chain == NULL) {
+        return NULL;
+    }
     struct job* current = job_chain;
     struct job* last_stopped = current->state == STOPPED ? current : NULL;
     while (current->next != NULL) {
@@ -133,4 +139,17 @@ struct job* removeTerminated(struct job* job_chain) {
         return next;
     }
     return job_chain;
+}
+
+void updateJobStates(struct job* job_chain) {
+    int status;
+    struct job* current = job_chain;
+    while (current != NULL) {
+        if (current->state == RUNNING) {
+            if(waitpid(current->pgid, &status, WNOHANG) != 0) {
+                current->state = TERMINATED;
+            }
+        }
+        current = current->next;
+    }
 }

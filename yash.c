@@ -146,6 +146,7 @@ int main() {
 
     while (line = prompt()) {
         if (job_chain != NULL) {
+            updateJobStates(job_chain);
             job_chain = removeTerminated(job_chain);
         }
         if (strEquals(line, "history")) {
@@ -164,14 +165,18 @@ int main() {
         }
         if (strEquals(line, "fg")) {
             struct job* last_job = getLastJob(job_chain);
-            printJob(last_job);
-            fg(last_job);
+            if (last_job != NULL) {
+                printJob(last_job);
+                fg(last_job);
+            }
             continue;
         }
         if (strEquals(line, "bg")) {
             struct job* last_stopped = getLastStoppedJob(job_chain);
-            printJob(last_stopped);
-            // fg(last_job);
+            if (last_stopped != NULL) {
+                printJob(last_stopped);
+                // fg(last_job);
+            }
             continue;
         }
 
