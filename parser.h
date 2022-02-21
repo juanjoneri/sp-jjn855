@@ -106,7 +106,8 @@ void addArguments(struct command* c, char* arguments) {
 struct command* parseCommand(char* source) {
     // program arg1 arg2 < infile.txt > outfile.txt &
     char* command_pat =
-        "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*(&)?\\s*";
+        "([^|<>& ]+)([^|<>&]+)?\\s*([<>]\\s*[^|<>& ]+)?\\s*([<>]\\s*[^|<>& "
+        "]+)?\\s*(&)?\\s*";
     size_t max_groups = 6;
 
     regex_t regex;

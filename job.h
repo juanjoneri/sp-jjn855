@@ -146,7 +146,7 @@ void updateJobStates(struct job* job_chain) {
     struct job* current = job_chain;
     while (current != NULL) {
         if (current->state == RUNNING) {
-            if(waitpid(current->pgid, &status, WNOHANG) != 0) {
+            if (waitpid(current->pgid, &status, WNOHANG) != 0) {
                 current->state = TERMINATED;
             }
         }

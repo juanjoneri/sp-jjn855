@@ -11,12 +11,10 @@ void closeFileDescriptor(int file_descriptor) {
     }
 }
 
-void giveTerminalControl(int pgid) {
-    tcsetpgrp(0, pgid);
-}
+void giveTerminalControl(int pgid) { tcsetpgrp(0, pgid); }
 
 void claimTerminalControl() {
-    signal(SIGTTOU, SIG_IGN); // Prevent IO from breaking the program
+    signal(SIGTTOU, SIG_IGN);  // Prevent IO from breaking the program
     tcsetpgrp(0, getpgid(getpid()));
 }
 
@@ -212,7 +210,7 @@ int main() {
 
         signal(SIGTSTP, SIG_DFL);  // Allow ^z while child owns the terminal
         execute(getLastJob(job_chain));
-        signal(SIGTSTP, SIG_IGN); // Ignore ^z when yash owns the terminal
+        signal(SIGTSTP, SIG_IGN);  // Ignore ^z when yash owns the terminal
 
         free(line);
         history[i++] = c;
