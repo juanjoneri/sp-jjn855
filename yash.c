@@ -173,7 +173,7 @@ int main() {
     signal(SIGTSTP, SIG_IGN);
 
     char* line;
-    int history_size = 100;
+    int history_size = 500;
     struct command* history[history_size];
     struct job* job_chain = NULL;
     int i = 0;
