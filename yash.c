@@ -110,6 +110,11 @@ void execute(struct job* job) {
         return;
     }
 
+    if (hasPipe(c) && hasInputRedirection(c->pipe) && !fileExists(c->pipe->infile)) {
+        printf("%s not such file or directory\n", c->pipe->infile);
+        return;
+    }
+
     int input = getInputFileDescriptor(c);
     int output = getOutputFileDescriptor(c);
 

@@ -1,0 +1,16 @@
+total 68
+drwxrwxrwx 1 juanjoneri juanjoneri   512 Feb 21 19:37 .
+drwxrwxrwx 1 juanjoneri juanjoneri   512 Feb 13 01:25 ..
+drwxrwxrwx 1 juanjoneri juanjoneri   512 Feb 21 19:26 .git
+-rwxrwxrwx 1 juanjoneri juanjoneri   448 Feb 11 23:18 .gitignore
+drwxrwxrwx 1 juanjoneri juanjoneri   512 Feb  8 20:08 .vscode
+-rwxrwxrwx 1 juanjoneri juanjoneri   299 Feb 16 21:53 README.md
+-rwxrwxrwx 1 juanjoneri juanjoneri     0 Feb 21 19:37 a.txt
+-rwxrwxrwx 1 juanjoneri juanjoneri 16832 Feb 21 19:17 inf
+-rwxrwxrwx 1 juanjoneri juanjoneri   177 Feb 20 18:02 infloop.c
+-rwxrwxrwx 1 juanjoneri juanjoneri  3709 Feb 20 17:52 job.h
+-rwxrwxrwx 1 juanjoneri juanjoneri  4844 Feb 20 17:52 parser.h
+-rwxrwxrwx 1 juanjoneri juanjoneri    73 Feb 19 16:32 prompt.h
+-rwxrwxrwx 1 juanjoneri juanjoneri  1289 Feb 16 21:39 utils.h
+-rwxrwxrwx 1 juanjoneri juanjoneri 23744 Feb 21 19:37 yash
+-rwxrwxrwx 1 juanjoneri juanjoneri  6484 Feb 21 19:36 yash.c
