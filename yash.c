@@ -110,7 +110,8 @@ void execute(struct job* job) {
         return;
     }
 
-    if (hasPipe(c) && hasInputRedirection(c->pipe) && !fileExists(c->pipe->infile)) {
+    if (hasPipe(c) && hasInputRedirection(c->pipe) &&
+        !fileExists(c->pipe->infile)) {
         printf("%s not such file or directory\n", c->pipe->infile);
         return;
     }
@@ -199,8 +200,8 @@ int main() {
         if (strEquals(line, "fg")) {
             struct job* last_job = getLastJob(job_chain);
             if (last_job != NULL) {
+                printCommand(last_job->command);
                 last_job->state = RUNNING;
-                printJob(last_job);
                 fg(last_job);
             }
             continue;
