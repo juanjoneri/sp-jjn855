@@ -58,7 +58,7 @@ int getOutputFileDescriptor(struct command* c) {
     return -1;
 }
 
-enum JobState waitForChild(int child_pid, int ignore_sigstp) {
+enum JobState waitForChild(int child_pid) {
     int status, w;
     while (1) {
         w = waitpid(child_pid, &status, WUNTRACED);
@@ -70,7 +70,7 @@ enum JobState waitForChild(int child_pid, int ignore_sigstp) {
             // Terminated normally
             return TERMINATED;
         }
-        if (WIFSTOPPED(status) && !ignore_sigstp) {
+        if (WIFSTOPPED(status)) {
             // Terminated by signal SIGSTP (^z)
             return STOPPED;
         }
@@ -84,7 +84,7 @@ enum JobState waitForChild(int child_pid, int ignore_sigstp) {
 void fg(struct job* job) {
     giveTerminalControl(job->pgid);
     kill(job->pgid, SIGCONT);
-    enum JobState state = waitForChild(job->pgid, 0);
+    enum JobState state = waitForChild(job->pgid);
     claimTerminalControl();
     job->state = state;
 }
@@ -153,8 +153,8 @@ void execute(struct job* job) {
 
         giveTerminalControl(pipe_pgid);
 
-        waitForChild(right_child_pid, /*ignore SIGSTP*/ 1);
-        waitForChild(left_child_pid, /*ignore SIGSTP*/ 1);
+        waitForChild(right_child_pid);
+        waitForChild(left_child_pid);
 
         claimTerminalControl();
 
