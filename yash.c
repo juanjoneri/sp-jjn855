@@ -58,7 +58,7 @@ int getOutputFileDescriptor(struct command* c) {
     return -1;
 }
 
-enum JobState waitForChild(int child_pid) {
+enum JobState waitForChild(int child_pid, int ignore_sigstp) {
     int status, w;
     while (1) {
         w = waitpid(child_pid, &status, WUNTRACED);
@@ -70,7 +70,7 @@ enum JobState waitForChild(int child_pid) {
             // Terminated normally
             return TERMINATED;
         }
-        if (WIFSTOPPED(status)) {
+        if (WIFSTOPPED(status) && !ignore_sigstp) {
             // Terminated by signal SIGSTP (^z)
             return STOPPED;
         }
@@ -84,7 +84,7 @@ enum JobState waitForChild(int child_pid) {
 void fg(struct job* job) {
     giveTerminalControl(job->pgid);
     kill(job->pgid, SIGCONT);
-    enum JobState state = waitForChild(job->pgid);
+    enum JobState state = waitForChild(job->pgid, 0);
     claimTerminalControl();
     job->state = state;
 }
@@ -114,6 +114,11 @@ void execute(struct job* job) {
     int output = getOutputFileDescriptor(c);
 
     if (hasPipe(c)) {
+        if (isBackgroundJob(c) || isBackgroundJob(c->pipe)) {
+            printf("Cannot background a pipeline\n");
+            return;
+        }
+
         int pipe_left, pipe_right, pipe_file_descriptor[2];
         pipe(pipe_file_descriptor);
         pipe_left = pipe_file_descriptor[1];
@@ -143,15 +148,15 @@ void execute(struct job* job) {
 
         giveTerminalControl(pipe_pgid);
 
-        waitForChild(right_child_pid);
-        waitForChild(left_child_pid);
+        waitForChild(right_child_pid, /*ignore SIGSTP*/ 1);
+        waitForChild(left_child_pid, /*ignore SIGSTP*/ 1);
 
         claimTerminalControl();
 
     } else {
         int child_pid = doExecute(c, input, output, -1, 0);
         job->pgid = child_pid;
-        if (!c->background) {
+        if (!isBackgroundJob(c)) {
             fg(job);
         }
     }
@@ -207,9 +212,13 @@ int main() {
 
         struct command* c = parsePipe(line);
         job_chain = addToJobChain(job_chain, c);
+        struct job* last_job = getLastJob(job_chain);
 
-        signal(SIGTSTP, SIG_DFL);  // Allow ^z while child owns the terminal
-        execute(getLastJob(job_chain));
+        if (!hasPipe(last_job->command)) {
+            // Allow ^z while child owns the terminal if child is not a pipeline
+            signal(SIGTSTP, SIG_DFL);
+        }
+        execute(last_job);
         signal(SIGTSTP, SIG_IGN);  // Ignore ^z when yash owns the terminal
 
         free(line);
