@@ -50,6 +50,11 @@ void printJob(struct job* j) {
     printf("\n");
 }
 
+void printJobCommand(struct job* j) {
+    printCommand(j->command);
+    printf("\n");
+}
+
 void printJobChain(struct job* job_chain) {
     if (job_chain == NULL) {
         return;

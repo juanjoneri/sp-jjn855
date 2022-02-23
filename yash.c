@@ -200,8 +200,8 @@ int main() {
         if (strEquals(line, "fg")) {
             struct job* last_job = getLastJob(job_chain);
             if (last_job != NULL) {
-                printCommand(last_job->command);
                 last_job->state = RUNNING;
+                printJobCommand(last_job);
                 fg(last_job);
             }
             continue;
