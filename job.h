@@ -28,6 +28,7 @@ void freeJobChain(struct job* job_chain) {
     if (job_chain->next != NULL) {
         freeJobChain(job_chain->next);
     }
+    kill(job_chain->pgid, SIGINT);
     free(job_chain);
 }
 
