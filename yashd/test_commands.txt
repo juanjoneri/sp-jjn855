@@ -1,0 +1,50 @@
+-----------------Basic Commands-----------------:
+
+ls
+
+hello
+
+echo fkdjsalf lfjdasl lfaj;dflkasdj;
+
+-----------------File Redirection-----------------:
+
+echo hello > tmp/1.txt
+cat < tmp/1.txt
+
+echo this is 2 > tmp/2.txt
+cat < tmp/2.txt > tmp/1.txt
+
+-----------------Pipe-----------------:
+
+echo this is 1 | cat > tmp/1.txt
+
+cat < tmp/2.txt > tmp/3.txt | cat < tmp/1.txt
+
+-----------------Input within process/Signals-----------------:
+
+cat -- Just make sure the following input are sent back to yash
+    hello
+
+    jdlksaf jfldks lkfjdsalfj;sda lkfjdsalfj
+
+    ^c
+
+sleep 5
+    ^z
+
+sleep 5
+    ^c
+
+-----------------Close Socket-----------------:
+
+^d 
+NOTES:
+* Make sure yash exits fine
+    * I have had problems sometimes where I lose control of terminal after ^d
+* Make sure yashd closes the socket, but the program does not exit
+    * We can just run 2 yash, put in a ^d for 1, and make sure the other still works as expected
+
+
+
+TODO: -----------------jobs/fg/bg-----------------:
+We need to reimplement the job_table for yashd and then we can test this as well
